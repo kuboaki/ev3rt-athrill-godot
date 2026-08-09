@@ -59,6 +59,37 @@ GCC 4.9.2とNewlib 2.1.0をC言語用に構築する。生成先は次のとお�
 Parallelsの2コアARM64 VMでの初回構築時間は約22分。
 `toolchain/work/`はGit管理対象外である。
 
+## Athrillとsample03のビルド
+
+AthrillをUbuntu ARM64上でビルドする。
+
+    ./scripts/build_athrill.sh
+
+このスクリプトはARM64でEOFを正しく検出するため、
+Athrillコアの`file_getline()`で`fgetc()`の戻り値を`int`として保持する
+パッチを適用する。また、EV3RT公式手順に基づき`timer32=true`および
+`etrobo_optimize=true`を有効にする。MMAP VDEVを使うため
+`vdev_disable=true`は指定しない。
+
+EV3RTのsample03は次でビルドする。
+
+    ./scripts/build_sample03.sh
+
+生成された`asp`は依存リポジトリ側の
+`sdk/workspace/sample03/asp`へ配置される。
+
+## sample03の起動
+
+MMAPファイルを初期化してAthrillを起動する。
+
+    ./scripts/run_sample03.sh
+
+既定のタイムアウトクロックは`3000000000`。変更する場合は次のようにする。
+
+    ATHRILL_TIMEOUT_CLOCKS=300000000 ./scripts/run_sample03.sh
+
+Athrillはタイムアウト終了時にも終了コード`1`を返す。
+
 ## 実時間同期
 
 `workspace/sample03/device_config_mmap_sync.txt` では次を有効化している。

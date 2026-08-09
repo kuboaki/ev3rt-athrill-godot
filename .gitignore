@@ -21,3 +21,7 @@ work/
 # Editor and OS files
 *~
 .DS_Store
+
+# Python cache
+__pycache__/
+*.py[cod]

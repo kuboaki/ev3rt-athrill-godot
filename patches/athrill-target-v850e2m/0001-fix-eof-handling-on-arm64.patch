@@ -1,0 +1,13 @@
+diff --git a/src/lib/file.c b/src/lib/file.c
+index ae7bb231..8bd1d5f0 100644
+--- a/src/lib/file.c
++++ b/src/lib/file.c
+@@ -98,7 +98,7 @@ bool file_ropen_filepath(const char *dir, const char *filename, FileType *file)
+ uint32 file_getline(FileType *file, char *line, int size)
+ {
+ 	uint32 n = 0;
+-	char c;
++	int c;
+ 	while (n < size) {
+ 		c = fgetc(file->fp);
+ 		if (c < 0 || c == '\n') {

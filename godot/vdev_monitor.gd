@@ -8,7 +8,6 @@ const POWER_A_OFFSET := BODY_OFFSET + MOTOR_OFFSET
 const POWER_C_OFFSET := BODY_OFFSET + MOTOR_OFFSET + 2 * 4
 
 var poll_elapsed := 0.0
-var toggle_elapsed := 0.0
 var reflect_value := 5
 var last_power_a := 999
 var last_power_c := 999
@@ -30,6 +29,17 @@ var robot_angle := 0.0
 const MOTOR_SPEED_SCALE := 3.0
 const WHEEL_DISTANCE := 80.0
 
+const LINE_START_X := 250.0
+const LINE_END_X := 1050.0
+const LINE_Y := 350.0
+const LINE_HALF_WIDTH := 6.0
+
+const COLOR_SENSOR_FORWARD_OFFSET := 32.0
+const REFLECT_ON_LINE := 5
+const REFLECT_OFF_LINE := 50
+
+var color_sensor_position := Vector2.ZERO
+
 func _ready() -> void:
 	add_theme_font_size_override("font_size", 24)
 	position = Vector2(30, 30)
@@ -37,13 +47,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	update_robot(delta)
+	update_line_sensor()
 	queue_redraw()
-	toggle_elapsed += delta
-
-	if toggle_elapsed >= 10.0:
-		toggle_elapsed = 0.0
-		reflect_value = 50 if reflect_value == 5 else 5
-		print("REFLECT changed to: ", reflect_value)
 
 	poll_elapsed += delta
 
@@ -149,7 +154,8 @@ func _input(event: InputEvent) -> void:
 		and not event.echo
 		and event.keycode == KEY_SPACE
 	):
-		reflect_value = 50 if reflect_value == 5 else 5
+		robot_position = Vector2(500, LINE_Y)
+		robot_angle = 0.0
 
 func update_robot(delta: float) -> void:
 	var left_speed := float(motor_power_a) * MOTOR_SPEED_SCALE
@@ -167,12 +173,38 @@ func update_robot(delta: float) -> void:
 	robot_position.x = clamp(robot_position.x, 30.0, viewport_size.x - 30.0)
 	robot_position.y = clamp(robot_position.y, 30.0, viewport_size.y - 30.0)
 
+func update_line_sensor() -> void:
+	var forward := Vector2(cos(robot_angle), sin(robot_angle))
+	color_sensor_position = (
+		robot_position
+		+ forward * COLOR_SENSOR_FORWARD_OFFSET
+	)
+
+	var inside_line_x: bool = (
+		color_sensor_position.x >= LINE_START_X
+		and color_sensor_position.x <= LINE_END_X
+	)
+	var inside_line_y: bool = (
+		abs(color_sensor_position.y - LINE_Y)
+		<= LINE_HALF_WIDTH
+	)
+
+	var new_reflect_value := (
+		REFLECT_ON_LINE
+		if inside_line_x and inside_line_y
+		else REFLECT_OFF_LINE
+	)
+
+	if new_reflect_value != reflect_value:
+		reflect_value = new_reflect_value
+		print("REFLECT changed to: ", reflect_value)
+
 
 func _draw() -> void:
 	# 仮の走行ライン
 	draw_line(
-		Vector2(250, 350),
-		Vector2(1050, 350),
+		Vector2(LINE_START_X, LINE_Y),
+		Vector2(LINE_END_X, LINE_Y),
 		Color(0.15, 0.15, 0.15),
 		12.0
 	)
@@ -203,3 +235,21 @@ func _draw() -> void:
 	)
 
 	draw_set_transform(Vector2.ZERO, 0.0)
+
+	var sensor_color := (
+		Color(0.1, 0.9, 0.2)
+		if reflect_value == REFLECT_ON_LINE
+		else Color(0.95, 0.2, 0.2)
+	)
+
+	draw_line(
+		robot_position,
+		color_sensor_position,
+		Color(0.7, 0.7, 0.7),
+		2.0
+	)
+	draw_circle(
+		color_sensor_position,
+		7.0,
+		sensor_color
+	)

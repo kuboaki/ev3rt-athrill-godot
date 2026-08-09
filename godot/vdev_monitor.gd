@@ -36,6 +36,8 @@ func _ready() -> void:
 	text = "Waiting for VDEV data..."
 
 func _process(delta: float) -> void:
+	update_robot(delta)
+	queue_redraw()
 	toggle_elapsed += delta
 
 	if toggle_elapsed >= 10.0:
@@ -82,6 +84,8 @@ func read_vdev_tx() -> void:
 	var unity_simtime := data.decode_u64(16)
 	var power_a := data.decode_s32(POWER_A_OFFSET)
 	var power_c := data.decode_s32(POWER_C_OFFSET)
+	motor_power_a = power_a
+	motor_power_c = power_c
 	if power_a != last_power_a or power_c != last_power_c:
 		print(
 			"Motor changed: REFLECT=", reflect_value,
@@ -146,3 +150,56 @@ func _input(event: InputEvent) -> void:
 		and event.keycode == KEY_SPACE
 	):
 		reflect_value = 50 if reflect_value == 5 else 5
+
+func update_robot(delta: float) -> void:
+	var left_speed := float(motor_power_a) * MOTOR_SPEED_SCALE
+	var right_speed := float(motor_power_c) * MOTOR_SPEED_SCALE
+
+	var linear_speed := (left_speed + right_speed) * 0.5
+	var angular_speed := (right_speed - left_speed) / WHEEL_DISTANCE
+
+	robot_angle += angular_speed * delta
+
+	var forward := Vector2(cos(robot_angle), sin(robot_angle))
+	robot_position += forward * linear_speed * delta
+
+	var viewport_size := get_viewport_rect().size
+	robot_position.x = clamp(robot_position.x, 30.0, viewport_size.x - 30.0)
+	robot_position.y = clamp(robot_position.y, 30.0, viewport_size.y - 30.0)
+
+
+func _draw() -> void:
+	# 仮の走行ライン
+	draw_line(
+		Vector2(250, 350),
+		Vector2(1050, 350),
+		Color(0.15, 0.15, 0.15),
+		12.0
+	)
+
+	# 差動二輪ロボット
+	draw_set_transform(robot_position, robot_angle)
+
+	draw_rect(
+		Rect2(-25, -18, 50, 36),
+		Color(0.2, 0.55, 0.9),
+		true
+	)
+	draw_rect(
+		Rect2(-18, -25, 36, 7),
+		Color(0.08, 0.08, 0.08),
+		true
+	)
+	draw_rect(
+		Rect2(-18, 18, 36, 7),
+		Color(0.08, 0.08, 0.08),
+		true
+	)
+	draw_line(
+		Vector2.ZERO,
+		Vector2(32, 0),
+		Color(1.0, 0.8, 0.1),
+		4.0
+	)
+
+	draw_set_transform(Vector2.ZERO, 0.0)

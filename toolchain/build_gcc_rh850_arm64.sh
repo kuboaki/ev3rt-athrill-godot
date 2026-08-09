@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # exit if command failed.
 set -o errexit
 # exit if pipe failed.
@@ -8,48 +9,46 @@ set -o nounset
 # sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 sudo apt update -y
-sudo apt install build-essential wget texinfo bison flex zip -y
+sudo apt install build-essential wget ca-certificates texinfo bison flex autoconf automake -y
 
 BINUTILS_VERSION="2.24"
 GCC_VERSION="4.9.2"
 NEWLIB_VERSION="2.1.0"
-GDB_VERSION="7.8.1"
 RENESAS_VERSION="v850_v14.01"
+TOPPERS_RELEASE_VERSION="v1.1"
+TOPPERS_PACKAGE_URL="https://github.com/toppers/athrill-gcc-v850e2m/releases/download/${TOPPERS_RELEASE_VERSION}/athrill-gcc-package.tar.gz"
 
 BUILD="aarch64-linux-gnu"
 LINUX_HOST="aarch64-linux-gnu"
-WINDOWS_HOST="x86_64-w64-mingw32"
-DARWIN_HOST="x86_64-apple-darwin"
 
 TARGET="v850-elf"
 
 CURRENT_PATH=$(cd $(dirname $0);pwd)
 BASE_PATH="${CURRENT_PATH}/work"
 
-PATCH_PATH=$(dirname $(readlink -f "$0"))/patch
 SOURCE_PATH="${BASE_PATH}/source"
 BUILD_LINUX_PATH="${BASE_PATH}/build/linux"
-BUILD_WINDOWS_PATH="${BASE_PATH}/build/win32"
-BUILD_DARWIN_PATH="${BASE_PATH}/build/darwin"
 INSTALL_LINUX_PATH="${BASE_PATH}/install/v850-elf-gcc-linux-arm64"
-INSTALL_WINDOWS_PATH="${BASE_PATH}/install/v850-elf-gcc-win32-x64"
-INSTALL_DARWIN_PATH="${BASE_PATH}/install/v850-elf-gcc-darwin-x64"
 STAGE_PATH="${BASE_PATH}/stage"
 PATH=${INSTALL_LINUX_PATH}/bin:$PATH
 export CXXFLAGS="-O2 -std=gnu++98"
 
 mkdir -p ${SOURCE_PATH}
 mkdir -p ${BUILD_LINUX_PATH}
-mkdir -p ${BUILD_WINDOWS_PATH}
 mkdir -p ${INSTALL_LINUX_PATH}
-mkdir -p ${INSTALL_WINDOWS_PATH}
 mkdir -p ${STAGE_PATH}
 
 # download tarballs
-if [ ! -e ${STAGE_PATH}/download_binutils ]
+if [ ! -e "${STAGE_PATH}/download_binutils" ]
 then
-    wget -c -O ${SOURCE_PATH}/binutils-${BINUTILS_VERSION}.tar.bz2 https://llvm-gcc-renesas.com/downloads/d.php?f=v850/binutils/14.01/binutils-${BINUTILS_VERSION}_${RENESAS_VERSION}.tar.bz2
-    touch ${STAGE_PATH}/download_binutils
+    TOPPERS_PACKAGE="${BASE_PATH}/athrill-gcc-package-${TOPPERS_RELEASE_VERSION}.tar.gz"
+
+    wget -c -O "${TOPPERS_PACKAGE}" "${TOPPERS_PACKAGE_URL}"
+    tar -xOf "${TOPPERS_PACKAGE}" \
+        "athrill-gcc-package/binutils-${BINUTILS_VERSION}.tar.gz" \
+        > "${SOURCE_PATH}/binutils-${BINUTILS_VERSION}.tar.gz"
+
+    touch "${STAGE_PATH}/download_binutils"
 fi
 
 if [ ! -e ${STAGE_PATH}/download_gcc ]
@@ -64,17 +63,11 @@ then
     touch ${STAGE_PATH}/download_newlib
 fi
 
-if [ ! -e ${STAGE_PATH}/download_gdb ]
-then
-    wget -c -O ${SOURCE_PATH}/gdb-${GDB_VERSION}.tar.bz2 https://llvm-gcc-renesas.com/downloads/d.php?f=v850/gdb/14.01/gdb-${GDB_VERSION}_${RENESAS_VERSION}.tar.bz2
-    touch ${STAGE_PATH}/download_gdb
-fi
-
 # extract tarballs
 if [ ! -e ${STAGE_PATH}/extract_binutils ]
 then
     echo "extract_binutils"
-    tar -jxf ${SOURCE_PATH}/binutils-${BINUTILS_VERSION}.tar.bz2 -C ${SOURCE_PATH}
+    tar -zxf "${SOURCE_PATH}/binutils-${BINUTILS_VERSION}.tar.gz" -C "${SOURCE_PATH}"
     touch ${STAGE_PATH}/extract_binutils
 fi
 
@@ -92,25 +85,34 @@ then
     touch ${STAGE_PATH}/extract_newlib
 fi
 
-if [ ! -e ${STAGE_PATH}/extract_gdb ]
+# Download GCC prerequisites (GMP, MPFR, MPC, ISL and CLOOG).
+if [ ! -e "${STAGE_PATH}/download_gcc_prerequisites" ]
 then
-    echo "extract_gdb"
-    tar -jxf ${SOURCE_PATH}/gdb-${GDB_VERSION}.tar.bz2 -C ${SOURCE_PATH}
-    touch ${STAGE_PATH}/extract_gdb
+    cd "${SOURCE_PATH}/gcc-${GCC_VERSION}"
+    ./contrib/download_prerequisites
+    touch "${STAGE_PATH}/download_gcc_prerequisites"
 fi
 
-# download gcc prerequisites
-cd ${SOURCE_PATH}/gcc-${GCC_VERSION}
-# ./contrib/download_prerequisites  # already downloaded
+# Old GNUV850 sources do not recognize aarch64 in bundled config.sub.
+if [ ! -e "${STAGE_PATH}/update_config_aux" ]
+then
+    find \
+        "${SOURCE_PATH}/binutils-${BINUTILS_VERSION}" \
+        "${SOURCE_PATH}/gcc-${GCC_VERSION}" \
+        "${SOURCE_PATH}/newlib-${NEWLIB_VERSION}" \
+        -type f -name config.sub \
+        -exec cp /usr/share/misc/config.sub {} \;
 
-# # do patches
-# if [ ! -e ${STAGE_PATH}/do_patch ]
-# then
-#     cd ${SOURCE_PATH}
-#     patch -p0 -i ${PATCH_PATH}/gcc.patch
-#     patch -p0 -i ${PATCH_PATH}/newlib.patch
-#     touch ${STAGE_PATH}/do_patch
-# fi
+    find \
+        "${SOURCE_PATH}/binutils-${BINUTILS_VERSION}" \
+        "${SOURCE_PATH}/gcc-${GCC_VERSION}" \
+        "${SOURCE_PATH}/newlib-${NEWLIB_VERSION}" \
+        -type f -name config.guess \
+        -exec cp /usr/share/misc/config.guess {} \;
+
+    touch "${STAGE_PATH}/update_config_aux"
+fi
+
 
 # build linux toolchain
 if [ ! -e ${STAGE_PATH}/build_linux_binutils ]

@@ -44,6 +44,21 @@ Ubuntu 24.04 ARM64上で以下を確認済み。
 - scripts/
   - ビルド・実行補助スクリプト
 
+## GNUV850ツールチェーンの構築
+
+Ubuntu 24.04 ARM64上で、GNUV850 v14.01（GCC 4.9.2）を
+クリーン状態から構築できることを確認済み。
+
+    ./toolchain/build_gcc_rh850_arm64.sh
+
+スクリプトはTOPPERSのv1.1リリースから改修済みBinutils 2.24を取得し、
+GCC 4.9.2とNewlib 2.1.0をC言語用に構築する。生成先は次のとおり。
+
+    toolchain/work/install/v850-elf-gcc-linux-arm64
+
+Parallelsの2コアARM64 VMでの初回構築時間は約22分。
+`toolchain/work/`はGit管理対象外である。
+
 ## 実時間同期
 
 `workspace/sample03/device_config_mmap_sync.txt` では次を有効化している。

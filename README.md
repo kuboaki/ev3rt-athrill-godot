@@ -90,6 +90,25 @@ MMAPファイルを初期化してAthrillを起動する。
 
 Athrillはタイムアウト終了時にも終了コード`1`を返す。
 
+## 荷物運搬ステートマシン
+
+`uml_seminar_ev3/`はEV3RT SDK内で標準の`workspace/`と並べて使う
+別ワークスペースである。`sample04-01-stm`は次のセンサーを使用する。
+
+- ポート1: 前方バンパー用タッチセンサー
+- ポート2: 荷物搭載確認用タッチセンサー
+- ポート3: ライントレース用カラーセンサー
+- ポート4: 到着地点検出用超音波センサー
+
+元の演習ソースでは初期状態`P_INIT`の処理が欠落していたため、
+移植版では`porter_init()`を実行して`P_WAIT_FOR_LOADING`へ遷移する処理を
+追加している。
+
+ビルドと起動は次のとおり。
+
+    ./scripts/build_sample04_stm.sh
+    ./scripts/run_sample04_stm.sh
+
 ## 実時間同期
 
 `workspace/sample03/device_config_mmap_sync.txt` では次を有効化している。

@@ -25,3 +25,5 @@ work/
 # Python cache
 __pycache__/
 *.py[cod]
+#*#
+.#*

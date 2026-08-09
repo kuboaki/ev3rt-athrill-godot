@@ -1,0 +1,23 @@
+# Build products
+*.o
+*.a
+asp
+athrill2
+
+# Runtime files
+*.log
+*_mmap.bin
+
+# Toolchain build directory and archives
+work/
+*.tar.gz
+*.tar.bz2
+*.zip
+
+# Godot cache
+.godot/
+*.import
+
+# Editor and OS files
+*~
+.DS_Store

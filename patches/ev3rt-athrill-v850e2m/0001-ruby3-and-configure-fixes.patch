@@ -1,0 +1,97 @@
+diff --git a/cfg/pass1.rb b/cfg/pass1.rb
+index 76a2efc..7d81480 100644
+--- a/cfg/pass1.rb
++++ b/cfg/pass1.rb
+@@ -168,7 +168,7 @@ def ReadSymvalTable
+     end
+ 
+     symvalCsv = CSV.open(symvalTableFileName,
+-						{ skip_blanks: true, skip_lines: /^#/ })
++						skip_blanks: true, skip_lines: /^#/ )
+     symvalCsv.each do |record|
+       # 変数名
+       if record[0].nil?
+diff --git a/configure.rb b/configure.rb
+index f23ac30..e6698f3 100644
+--- a/configure.rb
++++ b/configure.rb
+@@ -258,6 +258,7 @@ end
+ $vartable = Hash.new("")
+ $vartable["TARGET"] = $target
+ $vartable["APPLDIRS"] = $appldirs.join(" ")
++$vartable["APPLDIR"] = $appldirs.first
+ $vartable["APPLNAME"] = $applname
+ $vartable["CFGFILE"] = $cfgfile
+ $vartable["CDLFILE"] = $cdlfile
+diff --git a/tecsgen/tecslib/core/bnf.tab.rb b/tecsgen/tecslib/core/bnf.tab.rb
+index 33ab350..7a6b664 100644
+--- a/tecsgen/tecslib/core/bnf.tab.rb
++++ b/tecsgen/tecslib/core/bnf.tab.rb
+@@ -5148,8 +5148,8 @@ end
+ #  Ruby2.0(1.9) 対応に伴い導入したクラス
+ #  SJIS 以外では、ASCII-8BIT として入力する
+ class TECSIO
+-  def self.foreach(file) # ブロック引数 { |line| }
+-    pr = Proc.new   # このメソッドのブロック引数を pr に代入
++  def self.foreach(file, &pr) # ブロック引数 { |line| }
++    # このメソッドのブロック引数を pr に代入
+     if $b_no_kcode then
+ 	  msg = "E".encode $Ruby19_File_Encode
+       if( $Ruby19_File_Encode == "Shift_JIS" )
+@@ -5196,8 +5196,8 @@ class TECSIO
+     if msg.encoding != str.encoding then
+       option = { :invalid => :replace, :undef => :replace }   # 例外を発生させず、'?' に変換する(utf-8 は 0xfffd)
+       # return str.encode( msg.encoding, option )
+-      str = str.encode( "utf-8", option )
+-      return str.encode( msg.encoding, option )
++      str = str.encode( "utf-8", **option )
++      return str.encode( msg.encoding, **option )
+     else
+       return str
+     end
+diff --git a/tecsgen/tecslib/core/componentobj.rb b/tecsgen/tecslib/core/componentobj.rb
+index bb5bf8b..b78dbef 100644
+--- a/tecsgen/tecslib/core/componentobj.rb
++++ b/tecsgen/tecslib/core/componentobj.rb
+@@ -234,11 +234,10 @@ class Signature < NSBDNode  # < Nestable
+   #block:: ブロックを引数に取る
+   # ブロックは2つの引数を受け取る  Decl, ParamDecl     ( Decl: 関数ヘッダ )
+   # Port クラスにも each_param がある（同じ働き）
+-  def each_param # ブロック引数 { |func_decl, param_decl| }
++  def each_param(&pr) # ブロック引数 { |func_decl, param_decl| }
+     fha = get_function_head_array                       # 呼び口または受け口のシグニチャの関数配列
+     return if fha == nil                                # nil なら文法エラーで有効値が設定されなかった
+ 
+-    pr = Proc.new   # このメソッドのブロック引数を pr に代入
+     fha.each{ |fh|  # fh: FuncHead                      # 関数配列中の各関数頭部
+       fd = fh.get_declarator                            # fd: Decl  (関数頭部からDeclarotorを得る)
+       if fd.is_function? then                           # fd が関数でなければ、すでにエラー
+@@ -4360,12 +4359,11 @@ end
+   #block:: ブロックを引数として取る(ruby の文法で書かない)
+   #  ブロックは3つの引数を受け取る(Port, Decl,      ParamDecl)    Decl: 関数ヘッダ
+   # Signature クラスにも each_param がある（同じ働き）
+-  def each_param # ブロック引数{  |port, func_decl, param_decl| }
++  def each_param(&pr) # ブロック引数{  |port, func_decl, param_decl| }
+     return if @signature == nil                         # signature 未定義（既にエラー）
+     fha = @signature.get_function_head_array            # 呼び口または受け口のシグニチャの関数配列
+     return if fha == nil                                # nil なら文法エラーで有効値が設定されなかった
+ 
+-    pr = Proc.new   # このメソッドのブロック引数を pr に代入
+     port = self
+     fha.each{ |fh|  # fh: FuncHead                      # 関数配列中の各関数頭部
+       fd = fh.get_declarator                            # fd: Decl  (関数頭部からDeclarotorを得る)
+diff --git a/tecsgen/tecslib/core/generate.rb b/tecsgen/tecslib/core/generate.rb
+index 6597efa..afac669 100644
+--- a/tecsgen/tecslib/core/generate.rb
++++ b/tecsgen/tecslib/core/generate.rb
+@@ -763,8 +763,8 @@ EOT
+   end
+ 
+   #=== Namespace#すべてのシグニチャをたどる
+-  def travers_all_signature # ブロック引数 { |signature|  }
+-    proc = Proc.new    # このメソッドのブロック引数
++  def travers_all_signature(&proc) # ブロック引数 { |signature|  }
++    # このメソッドのブロック引数
+     @signature_list.each{ |sig|
+       proc.call sig
+     }

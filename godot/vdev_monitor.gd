@@ -53,11 +53,48 @@ const REFLECT_OFF_LINE := 50
 var color_sensor_position := Vector2.ZERO
 var course_points := PackedVector2Array()
 
-const WALL_X := 1000.0
+const COURSE_TOP_Y := (
+	COURSE_CENTER.y
+	- COURSE_VERTICAL_STRAIGHT * 0.5
+	- COURSE_CORNER_RADIUS
+)
 
-# 暫定値。Blenderモデル確認後に実位置へ合わせる。
-const ULTRASONIC_FORWARD_OFFSET := 10.0 * PIXELS_PER_CM
+# 配達先側壁：上側ライン内縁から内側へ5cm、幅8cm。
+const DELIVERY_WALL_Y := (
+	COURSE_TOP_Y
+	+ LINE_HALF_WIDTH
+	+ 5.0 * PIXELS_PER_CM
+)
+const DELIVERY_WALL_START := Vector2(
+	COURSE_CENTER.x - 8.0 * PIXELS_PER_CM,
+	DELIVERY_WALL_Y
+)
+const DELIVERY_WALL_END := Vector2(
+	COURSE_CENTER.x,
+	DELIVERY_WALL_Y
+)
+const DELIVERY_WALL_HEIGHT_CM := 16.0
+
+# 車庫正面壁：用紙中心から右へ27cm、下へ8.5cm、幅12cm。
+const GARAGE_WALL_START := Vector2(
+	COURSE_CENTER.x + 27.0 * PIXELS_PER_CM,
+	COURSE_CENTER.y + 8.5 * PIXELS_PER_CM
+)
+const GARAGE_WALL_END := (
+	GARAGE_WALL_START
+	+ Vector2(12.0 * PIXELS_PER_CM, 0.0)
+)
+const GARAGE_WALL_HEIGHT_CM := 17.0
+
+# LDrawモデルの部品原点から求めた初期値。
+const ULTRASONIC_FORWARD_OFFSET := -5.6 * PIXELS_PER_CM
+const ULTRASONIC_RIGHT_OFFSET := 4.0 * PIXELS_PER_CM
+
+# 前方バンパー先端は未実測。
 const BUMPER_FORWARD_OFFSET := 11.0 * PIXELS_PER_CM
+const BUMPER_CONTACT_TOLERANCE := 0.5 * PIXELS_PER_CM
+
+const ULTRASONIC_NO_DETECTION_MM := 2550
 
 var ultrasonic_sensor_position := Vector2.ZERO
 var bumper_position := Vector2.ZERO
@@ -338,18 +375,53 @@ func update_line_sensor() -> void:
 
 func update_environment_sensors() -> void:
 	var forward := Vector2(cos(robot_angle), sin(robot_angle))
+	var right := Vector2(-sin(robot_angle), cos(robot_angle))
 
 	ultrasonic_sensor_position = (
 		robot_position
 		+ forward * ULTRASONIC_FORWARD_OFFSET
+		+ right * ULTRASONIC_RIGHT_OFFSET
 	)
 	bumper_position = (
 		robot_position
 		+ forward * BUMPER_FORWARD_OFFSET
 	)
 
-	ultrasonic_distance_mm = 5000
-	bumper_pressed = false
+	# 右向き超音波レイと、配達先の有限壁線分との交点を求める。
+	ultrasonic_distance_mm = ULTRASONIC_NO_DETECTION_MM
+	var ultrasonic_ray_end := (
+		ultrasonic_sensor_position
+		+ right
+		* (
+			float(ULTRASONIC_NO_DETECTION_MM)
+			/ MM_PER_PIXEL
+		)
+	)
+	var ultrasonic_hit = Geometry2D.segment_intersects_segment(
+		ultrasonic_sensor_position,
+		ultrasonic_ray_end,
+		DELIVERY_WALL_START,
+		DELIVERY_WALL_END
+	)
+
+	if ultrasonic_hit != null:
+		ultrasonic_distance_mm = int(
+			ultrasonic_sensor_position.distance_to(
+				ultrasonic_hit
+			)
+			* MM_PER_PIXEL
+		)
+
+	# 前方バンパー先端と車庫壁線分との距離で接触を判定する。
+	var garage_closest := Geometry2D.get_closest_point_to_segment(
+		bumper_position,
+		GARAGE_WALL_START,
+		GARAGE_WALL_END
+	)
+	bumper_pressed = (
+		bumper_position.distance_to(garage_closest)
+		<= BUMPER_CONTACT_TOLERANCE
+	)
 
 
 func _draw() -> void:
@@ -362,12 +434,18 @@ func _draw() -> void:
 			true
 		)
 
-	# 荷下ろし地点の壁
+	# ブックエンドの垂直壁部分。土台は判定・描画しない。
 	draw_line(
-		Vector2(WALL_X, COURSE_CENTER.y - 90.0),
-		Vector2(WALL_X, COURSE_CENTER.y + 90.0),
-		Color(0.8, 0.25, 0.2),
-		10.0
+		DELIVERY_WALL_START,
+		DELIVERY_WALL_END,
+		Color(0.15, 0.55, 0.2),
+		3.0
+	)
+	draw_line(
+		GARAGE_WALL_START,
+		GARAGE_WALL_END,
+		Color(0.7, 0.25, 0.2),
+		3.0
 	)
 
 	# 差動二輪ロボット

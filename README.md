@@ -109,6 +109,22 @@ Athrillはタイムアウト終了時にも終了コード`1`を返す。
     ./scripts/build_sample04_stm.sh
     ./scripts/run_sample04_stm.sh
 
+## EV3 LCDのコンソールエミュレーション
+
+実機とシミュレータで同じアプリケーションコードを使用できるように、
+EV3RTアプリは通常どおり`ev3_lcd_draw_string()`を呼び出す。
+
+Athrill向けEV3APIではLCD文字列をAthrillの標準出力へ転送する。
+LCDの行ごとに直前の文字列を保持し、内容が変化した場合だけ出力するため、
+50ms周期で同じ状態を表示してもログが増え続けない。
+
+この変更は次のパッチとして管理する。
+
+`patches/ev3rt-athrill-v850e2m/0002-emulate-lcd-on-console.patch`
+
+`build_sample03.sh`と`build_sample04_stm.sh`はビルド前に
+`prepare_ev3rt.sh`を呼び出し、EV3RT用パッチを未適用の場合だけ適用する。
+
 ## 実時間同期
 
 `workspace/sample03/device_config_mmap_sync.txt` では次を有効化している。

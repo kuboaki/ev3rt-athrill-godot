@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPS_DIR="${EV3RT_GODOT_DEPS_DIR:-$(dirname "${PROJECT_DIR}")}"
+"${PROJECT_DIR}/scripts/prepare_ev3rt.sh"
 
 EV3RT_DIR="${DEPS_DIR}/ev3rt-athrill-v850e2m"
 TOOLCHAIN_DIR="${V850_TOOLCHAIN_DIR:-${PROJECT_DIR}/toolchain/work/install/v850-elf-gcc-linux-arm64}"

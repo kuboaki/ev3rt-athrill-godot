@@ -1,0 +1,76 @@
+diff --git a/sdk/common/ev3api/src/ev3api_lcd.c b/sdk/common/ev3api/src/ev3api_lcd.c
+index b712850..9879584 100644
+--- a/sdk/common/ev3api/src/ev3api_lcd.c
++++ b/sdk/common/ev3api/src/ev3api_lcd.c
+@@ -10,6 +10,17 @@
+ #include "platform_interface_layer.h"
+ #include <stdlib.h>
+ 
++#include <stdio.h>
++#include <string.h>
++
++#define ATHRILL_LCD_CONSOLE_LINES 8
++#define ATHRILL_LCD_CONSOLE_TEXT_MAX 128
++#define ATHRILL_LCD_CONSOLE_LINE_HEIGHT 20
++
++static char athrill_lcd_console[
++    ATHRILL_LCD_CONSOLE_LINES
++][ATHRILL_LCD_CONSOLE_TEXT_MAX];
++
+ static bitmap_t *lcd_screen;
+ static font_t   *fonts[10]; // TODO: magic number, up to 10 fonts
+ static lcdfont_t default_font = EV3_FONT_SMALL;
+@@ -39,14 +50,48 @@ ER ev3_font_get_size(lcdfont_t font, int32_t *width, int32_t *height) {
+ }
+ 
+ ER ev3_lcd_draw_string(const char *str, int32_t x, int32_t y) {
+-// TODO: #41 temporary comment out
+-//	bitmap_draw_string(str, lcd_screen, x, y, fonts[default_font], ROP_COPY);
++	int32_t line;
++
++	(void)x;
++
++	if (str == NULL) {
++		return E_PAR;
++	}
++
++	line = y / ATHRILL_LCD_CONSOLE_LINE_HEIGHT;
++	if ((line < 0) || (line >= ATHRILL_LCD_CONSOLE_LINES)) {
++		return E_PAR;
++	}
++
++	if (strncmp(
++		    athrill_lcd_console[line],
++		    str,
++		    ATHRILL_LCD_CONSOLE_TEXT_MAX
++		    ) != 0) {
++	  snprintf(
++		   athrill_lcd_console[line],
++		   ATHRILL_LCD_CONSOLE_TEXT_MAX,
++		   "%s",
++		   str
++		   );
++	  printf("%s\n", athrill_lcd_console[line]);
++	}
++
+ 	return E_OK;
+ }
+ 
+-ER ev3_lcd_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, lcdcolor_t color) {
+-// TODO: #41 temporary comment out
+-//	bitmap_bitblt(NULL, 0, 0, lcd_screen, x, y, w, h, color == EV3_LCD_BLACK ? ROP_SET : ROP_CLEAR);
++ER ev3_lcd_fill_rect(
++	int32_t x,
++	int32_t y,
++	int32_t w,
++	int32_t h,
++	lcdcolor_t color
++) {
++	(void)x;
++	(void)y;
++	(void)w;
++	(void)h;
++	(void)color;
+ 	return E_OK;
+ }
+ 

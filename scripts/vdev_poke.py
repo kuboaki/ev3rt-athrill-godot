@@ -67,7 +67,7 @@ def write_rx(path):
         put(SENSOR_INX_REFLECT, 5)        # < LM_THRESHOLD(20) -> "on the line"
         put(SENSOR_INX_ULTRASONIC, 500)   # 50cm -> outside wd_threshold(10cm), no wall
         put(SENSOR_INX_TOUCH_0, 0)        # bumper: not pressed
-        put(SENSOR_INX_TOUCH_1, 4095)     # carrier: pressed (ADC_RES=4095, threshold 2047)
+        put(SENSOR_INX_TOUCH_1, 0)        # carrier: no cargo loaded
     print(f"wrote sensor values into {path}")
 
 

@@ -81,12 +81,23 @@ typedef enum {
   P_WAIT_FOR_UNLOADING, P_RETURNING, P_ARRIVED
 } porter_state;
 
+static const char *const p_state_name[] = {
+  "P_INIT",
+  "P_WAIT_FOR_LOADING",
+  "P_TRANSPORTING",
+  "P_TIMEDOUT",
+  "P_CARGO_SHIFTING",
+  "P_WAIT_FOR_UNLOADING",
+  "P_RETURNING",
+  "P_ARRIVED"
+};
+
 porter_state p_state = P_INIT;
 
 int p_entry = true;
 
 void porter_transport(void) {
-  num_f(p_state, 2);
+  msg_f(p_state_name[p_state], 2);
   switch(p_state) {
   /* Porting fix: the original exercise source omitted P_INIT handling. */
   case P_INIT:

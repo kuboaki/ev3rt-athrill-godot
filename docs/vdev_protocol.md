@@ -1,130 +1,310 @@
-# Athrill VDEV プロトコル リファレンス
+# Athrill VDEVプロトコル リファレンス
 
-Athrill には、CPU 側から見える固定アドレス範囲へのメモリアクセスを、ホスト側のファイル(mmap)または UDP ソケット経由で外部プロセスに橋渡しする **VDEV（仮想デバイス）機構**が標準搭載されている。`device_config.txt` に `DEBUG_FUNC_ENABLE_VDEV 1` を設定するだけで有効になり、EV3RT 側のアプリ・カーネルには一切手を入れる必要がない。
+Athrillには、CPU側から見える固定アドレス範囲へのメモリアクセスを、
+ホスト側の共有ファイル（mmap）またはUDPソケット経由で外部プロセスへ
+橋渡しするVDEV（仮想デバイス）機構がある。
 
-対象: `toppers/ev3rt-athrill-v850e2m` + `toppers/athrill-target-v850e2m`（ARMv7-A 版 `toppers/ev3rt-athrill-ARMv7-A` でも同一アドレス体系であることを確認済み）。
+このプロジェクトではMMAPモードを使用し、EV3RT/AthrillとGodotの間で
+センサー入力とモーター出力を交換する。EV3RTアプリケーションは通常の
+EV3 APIを使用し、VDEV固有の処理を持たない。
 
-## device_config.txt の設定
+対象リポジトリ:
 
+- `toppers/ev3rt-athrill-v850e2m`
+- `toppers/athrill-target-v850e2m`
+
+ARMv7-A版`ev3rt-athrill-ARMv7-A`でも同じアドレス体系が使われていることを
+確認している。
+
+## MMAPモードの設定
+
+`device_config_mmap_sync.txt`では次を設定する。
+
+```text
+DEBUG_FUNC_ENABLE_VDEV            1
+DEBUG_FUNC_VDEV_MMAP_TX           0x40000000
+DEBUG_FUNC_VDEV_MMAP_RX           0x40010000
+DEBUG_FUNC_VDEV_SIMSYNC_TYPE      MMAP
+DEBUG_FUNC_ENABLE_SKIP_CLOCK      1
+DEBUG_FUNC_ENABLE_SYNC_TIME       1
 ```
-DEBUG_FUNC_ENABLE_VDEV		1
-DEBUG_FUNC_VDEV_MMAP_TX	0x40000000
-DEBUG_FUNC_VDEV_MMAP_RX	0x40010000
-DEBUG_FUNC_VDEV_SIMSYNC_TYPE	MMAP
+
+- `DEBUG_FUNC_VDEV_MMAP_TX`
+  - ホスト側ファイルは`athrill_mmap.bin`
+  - EV3RTアプリケーションからシミュレーターへ送るモーター・LED出力
+- `DEBUG_FUNC_VDEV_MMAP_RX`
+  - ホスト側ファイルは`unity_mmap.bin`
+  - シミュレーターからEV3RTアプリケーションへ送るセンサー入力
+- `DEBUG_FUNC_VDEV_SIMSYNC_TYPE=MMAP`
+  - VDEVの入出力に共有ファイルを使用する
+
+TX/RXはCPU側から見た方向である。`unity_mmap.bin`という名前のファイルが
+RX、すなわちGodotからEV3RTへ渡す入力側である点に注意する。
+
+各ファイルは8 KiBで作成する。
+
+```bash
+dd if=/dev/zero of=athrill_mmap.bin bs=1K count=8
+dd if=/dev/zero of=unity_mmap.bin bs=1K count=8
 ```
 
-- `DEBUG_FUNC_VDEV_MMAP_TX` = ホスト側ファイル名は `athrill_mmap.bin`。**EV3RT アプリがモーター/LED 出力を書き込む側**（TX = CPU から見た送信）。
-- `DEBUG_FUNC_VDEV_MMAP_RX` = ホスト側ファイル名は `unity_mmap.bin`。**外部プロセス（シム側）がセンサー値を書き込む側**（RX = CPU から見た受信）。
-- ファイル名と TX/RX の対応がやや直感に反する（"unity_mmap.bin" が RX = センサー入力側）ので要注意。ファイルサイズは 8KB(`dd if=/dev/zero of=xxx.bin bs=1k count=8`)で作成しておく。
-- UDP モード（`DEBUG_FUNC_VDEV_SIMSYNC_TYPE` を省略し `VDEV_TX/RX_PORTNO` を設定）も存在するが、今回は MMAP モードのみ検証。
+起動スクリプトはファイル作成と初期化を自動的に行う。
 
-## アドレス空間（CPU 側、`vdev.h` / `ev3_vdev_common.h` より）
+UDPモードも存在するが、このプロジェクトではMMAPモードだけを検証している。
 
-```
+## データの流れ
+
+| 方向 | ホスト側ファイル | 内容 |
+|---|---|---|
+| Godot → Athrill/EV3RT | `unity_mmap.bin` | 反射光、超音波、タッチなどのセンサー入力 |
+| Athrill/EV3RT → Godot | `athrill_mmap.bin` | モーターpower、停止、LEDなどの出力 |
+
+Godotはワールドと走行体からセンサー値を計算してRXファイルへ書き込む。
+EV3RTアプリケーションはEV3 APIを通じてその値を読み、制御結果をTX側へ
+書き込む。GodotはTXファイルから左右モーターのpower値を読み、走行体の
+位置と姿勢を更新する。
+
+## CPU側のVDEVアドレス空間
+
+`vdev.h`で次の領域が定義されている。
+
+```text
 VDEV_BASE          = 0x090F0000
-VDEV_RX_DATA_BASE  = VDEV_BASE            size=0x1000  (シム→EV3RTアプリ)
-VDEV_TX_DATA_BASE  = VDEV_BASE + 0x1000   size=0x1000  (EV3RTアプリ→シム)
+VDEV_RX_DATA_BASE  = VDEV_BASE            size=0x1000
+VDEV_TX_DATA_BASE  = VDEV_BASE + 0x1000   size=0x1000
 VDEV_TX_FLAG_BASE  = VDEV_BASE + 0x2000   size=0x1000
 ```
 
+- RX領域: シミュレーターからEV3RTアプリケーションへの入力
+- TX領域: EV3RTアプリケーションからシミュレーターへの出力
+- TXフラグ領域: VDEV送信制御用
+
+CPU側のRX/TXアクセスでは、ホスト側ファイルの32バイトヘッダーを除いた
+ボディ部分がレジスター空間として見える。
+
 ## ホスト側ファイルのバイナリレイアウト
 
-RX ファイル（`unity_mmap.bin`）:
+整数値はリトルエンディアンで格納する。
 
-| オフセット | 内容 |
-|---|---|
-| 0-3 | マジック `"ETRX"` |
-| 4-7 | version (uint32, =1) |
-| 8-15 | 予約 |
-| 16-23 | `unity_simtime`（uint64, シム側の時刻） |
-| 24-27 | ext_off (=512) |
-| 28-31 | ext_size (=512) |
-| 32-  | ボディ（下記センサーマップ、`32 + オフセット`） |
+### RXファイル: `unity_mmap.bin`
 
-TX ファイル（`athrill_mmap.bin`）:
+| ファイルオフセット | 型 | 内容 |
+|---:|---|---|
+| 0～3 | 4 bytes | マジック`ETRX` |
+| 4～7 | `uint32` | version（1） |
+| 8～15 | 8 bytes | 予約領域 |
+| 16～23 | `uint64` | `unity_simtime` |
+| 24～27 | `uint32` | `ext_off`（512） |
+| 28～31 | `uint32` | `ext_size`（512） |
+| 32～ | body | センサー入力 |
 
-| オフセット | 内容 |
-|---|---|
-| 0-3 | マジック `"ETTX"` |
-| 4-7 | version (uint32, =1) |
-| 8-15 | `micon_simtime`（uint64, EV3RT/Athrill側の時刻） |
-| 16-23 | `unity_simtime`（エコーバック） |
-| 24-27 | ext_off (=512) |
-| 28-31 | ext_size (=512) |
-| 32-  | ボディ（下記モーターマップ、`32 + オフセット`） |
+### TXファイル: `athrill_mmap.bin`
 
-`micon_simtime`/`unity_simtime` の時刻交換フィールドが既に用意されているため、**Athrill側のクロックを外部シム（MuJoCo）の時刻に同期させるペーシング機構として転用できる見込み**（未実装、要検討）。
+| ファイルオフセット | 型 | 内容 |
+|---:|---|---|
+| 0～3 | 4 bytes | マジック`ETTX` |
+| 4～7 | `uint32` | version（1） |
+| 8～15 | `uint64` | `micon_simtime` |
+| 16～23 | `uint64` | `unity_simtime`のエコーバック |
+| 24～27 | `uint32` | `ext_off`（512） |
+| 28～31 | `uint32` | `ext_size`（512） |
+| 32～ | body | モーター・LED出力 |
 
-## ボディのレジスタマップ（バイトオフセットは `EV3_SENSOR_OFF_TYPE`/`EV3_MOTOR_OFF_TYPE` の値、実ファイルオフセットは `32 + この値`）
+実ファイル上のレジスター位置は次の式で求める。
 
-RX側（センサー、4byte/slot）:
+```text
+file_offset = 32 + body_offset
+```
 
-| オフセット | 内容 |
-|---|---|
-| 0 (1byte) | ボタン（bit0-5 = LEFT/RIGHT/UP/DOWN/ENTER/BACK） |
+## シミュレーション時刻
+
+`micon_simtime`と`unity_simtime`はマイクロ秒単位で扱われる。
+AthrillのMMAP VDEV処理は、RXヘッダーの`unity_simtime`を読み、CPU周波数を
+掛けて外部シミュレーター側の目標クロックへ変換する。
+
+現在のGodot実装は`unity_simtime=0`を書き込んでいる。この場合、外部時刻を
+基準にAthrillを進める正式なシミュレーション時刻同期は行われない。
+
+一方、現在の起動設定では次を有効にしており、Athrillのスキップクロック時の
+実時間ペーシングは動作する。
+
+```text
+DEBUG_FUNC_ENABLE_SKIP_CLOCK 1
+DEBUG_FUNC_ENABLE_SYNC_TIME  1
+```
+
+したがって、次の2つを区別する必要がある。
+
+- Athrill単体の実時間ペーシング: 現在有効
+- Godotのシミュレーション時刻を基準とする同期: 未実装
+
+## RXボディのセンサーレジスタ
+
+各センサースロットは原則4バイトである。次表のオフセットはbody先頭からの
+バイトオフセットであり、実ファイル位置は`32 + オフセット`となる。
+
+| bodyオフセット | 内容 |
+|---:|---|
+| 0（1 byte） | ボタン。bit 0～5はLEFT/RIGHT/UP/DOWN/ENTER/BACK |
 | 4 | AMBIENT |
 | 8 | COLOR |
-| 12 | **REFLECT**（反射光、ライントレース用。ev3api の閾値判定は概ね 0-100 のスケール） |
-| 16/20/24 | RGB_R/G/B |
-| 28 | ANGLE (ジャイロ) |
+| 12 | REFLECT。反射光、概ね0～100のスケール |
+| 16 / 20 / 24 | RGB_R / RGB_G / RGB_B |
+| 28 | ANGLE（ジャイロ） |
 | 32 | RATE |
-| 36- | IR系（複数チャンネル） |
-| 84 | **ULTRASONIC**（超音波距離、mm単位。`ev3_ultrasonic_sensor_get_distance()` は `/10` して cm 化） |
+| 36～ | IR関連 |
+| 84 | ULTRASONIC。mm単位 |
 | 88 | ULTRASONIC_LISTEN |
-| 92/96/100 | AXES_X/Y/Z |
+| 92 / 96 / 100 | AXES_X / AXES_Y / AXES_Z |
 | 104 | TEMP |
-| 108 | **TOUCH_0**（タッチセンサー1個目。ev3api内部の「ポート順で数えた同種センサーの通し番号」に対応。ADC_RES=4095, 閾値は `val > 2047` でON） |
-| 112/116 | BATTERY_CURRENT/VOLTAGE |
-| 120 | **TOUCH_1**（タッチセンサー2個目） |
-| 256- | モーター角度フィードバック ANGLE_A/B/C/D（4byteずつ） |
+| 108 | TOUCH_0 |
+| 112 / 116 | BATTERY_CURRENT / BATTERY_VOLTAGE |
+| 120 | TOUCH_1 |
+| 256～ | モーター角度フィードバックANGLE_A/B/C/D |
 
-TX側（モーター/LED、オフセットはバイト単位）:
+`ev3_ultrasonic_sensor_get_distance()`はULTRASONIC値を10で割り、cmとして返す。
 
-| オフセット | 内容 |
-|---|---|
-| 0 (1byte) | LED（bit0-3 = RED/GREEN/YELLOW/BLUE） |
-| 4/8/12/16 | モーターPOWER_A/B/C/D |
-| 20/24/28/32 | モーターSTOP_A/B/C/D |
-| 36/40/44/48 | モーターRESET_ANGLE_A/B/C/D |
+タッチセンサーはADC値として扱われ、`4095`をON、`0`をOFFとして使用する。
+EV3RT側では概ね`value > 2047`で押下と判定される。
+
+## sample04-01-stmで使用するRX入力
+
+| VDEV入力 | EV3ポート | Godotでの値 | 用途 |
+|---|---|---|---|
+| REFLECT | ポート3 | ライン上`5`、ライン外`50` | ライントレース |
+| ULTRASONIC | ポート4 | 右側の配達先壁までの距離（mm） | 配達先到着検出 |
+| TOUCH_0 | ポート1 | OFF`0`、ON`4095` | 前方バンパーによる車庫壁検出 |
+| TOUCH_1 | ポート2 | OFF`0`、ON`4095` | 左側荷台の荷物搭載確認 |
+
+Godotの`L`キーは`TOUCH_1`を切り替える。
+
+## TXボディの出力レジスタ
+
+次表のオフセットはbody先頭からのバイトオフセットである。
+
+| bodyオフセット | 内容 |
+|---:|---|
+| 0（1 byte） | LED。bit 0～3はRED/GREEN/YELLOW/BLUE |
+| 4 / 8 / 12 / 16 | POWER_A / POWER_B / POWER_C / POWER_D |
+| 20 / 24 / 28 / 32 | STOP_A / STOP_B / STOP_C / STOP_D |
+| 36 / 40 / 44 / 48 | RESET_ANGLE_A / B / C / D |
 | 52 | GYRO_RESET |
 
-## タッチセンサーのインデックス対応（ev3api 内部仕様）
+`sample04-01-stm`ではポートAを左モーター、ポートCを右モーターとして使う。
 
-`ev3api_sensor.c` の `get_sensor_index()` は、**ポート番号の小さい順に、同じセンサー種別が何個接続されているかを数えた通し番号**を `TOUCH_0`/`TOUCH_1` に割り当てる。例えば `touch_sensor = EV3_PORT_1`, `touch_sensor2 = EV3_PORT_2` の場合、`touch_sensor` → `TOUCH_0`、`touch_sensor2` → `TOUCH_1` となる（ポート番号順であって、`ev3_sensor_config()` の呼び出し順ではない点に注意）。
+```text
+REFLECT=5  -> POWER_A=0,  POWER_C=20
+REFLECT=50 -> POWER_A=20, POWER_C=0
+```
 
-## 【要議論】VDEVレジスタマップの柔軟性の限界
+配達先と車庫で停止したときは次を確認している。
 
-実機EV3は、センサーポート4つ・モーターポート4つのどこに何を接続するかが自由で、
-`ev3_sensor_config(port, type)` / `ev3_motor_config(port, type)` によってポートとデバイスの対応を
-アプリ側が設定する（Lモーター/Mモーターの区別、NXT/RCX変換ケーブル経由のLED接続の区別なども含む）。
+```text
+POWER_A=0
+POWER_C=0
+```
 
-一方、上記のVDEVレジスタマップは REFLECT/ULTRASONIC/TOUCH_0/TOUCH_1 のような**センサー種別ごとに
-個数固定のスロット**を持つ方式になっている。例えば超音波センサーを3個使う、あるいはカラーセンサーを
-2個使うようなシステムの場合、現状のレジスタマップの再設計なしには対応できず、しかも「どのポートが
-どれか」を実機のように柔軟に扱うことができない。
+## タッチセンサーのインデックス対応
 
-この点については以下のように整理している:
+`ev3api_sensor.c`の`get_sensor_index()`は、ポート番号の小さい順に同じ種類の
+センサーが何個接続されているかを数え、その通し番号をVDEVスロットへ対応させる。
 
-- これはAthrill（あるいはその上のev3api抽象化）側の設計の問題であり、我々はAthrillの利用者という
-  立場なので、この柔軟性の限界を我々が解決すべき課題として引き取る必要はないかもしれない。
-- 実際、EV3RT自身の `ev3api_sensor.c` の `get_sensor_index()`（ポート順で同種センサーを数えた
-  通し番号を振る方式、下記参照）も、さほど柔軟ではなく一定の「割り切り」の上に成り立っている。
-  つまりこの制約はAthrillのVDEV層固有のものというより、EV3RT/ev3apiの抽象化自体が既に持っている
-  限界と見るべき。
+`sample04-01-stm`では次の対応になる。
 
-今回の sample04-02（touch×2, color×1, ultrasonic×1）はこの限界の範囲内に収まる単純なケースだった。
-将来、同種センサーを3個以上使う、あるいは実機と異なるポート構成にしたい等の要求が出た場合は、
-まずこれが「Athrill/ev3apiの設計上の制約」であることを踏まえた上で、レジスタマップの拡張が必要か、
-それとも要求自体を単純化できないか、を検討する。
+```text
+EV3_PORT_1 -> TOUCH_0 -> 前方バンパー
+EV3_PORT_2 -> TOUCH_1 -> 荷台の荷物搭載確認
+```
 
-**結論**: 現状のレジスタマップで対応できない構成のロボットを作った場合、レジスタマップの修正と
-それに伴う対応部分の修正は不可避。ただし修正が必要なのは **Athrill本体（CPU命令セットシミュレーション
-のコア）ではなく、ターゲット依存部**（`athrill-target-v850e2m` のVDEVレジスタ定義、`ev3_vdev_common.h`/
-`vdev.h` 等）と **EV3RT側ドライバ層**（`uart_dri.c` 等のスロット参照箇所）に限定される見込み。
-`VDEV_BASE` やRX/TXサイズ（現状 `0x1000`）、センサー種別ごとのスロット数はすべてこのターゲット依存部の
-ヘッダで決め打ちされているため、そこを拡張し対応するドライバのアドレス参照も合わせて直す、という
-一続きの改修になる。Athrillのコア自体への変更は不要な見込み。
+これは`ev3_sensor_config()`の呼び出し順ではなく、ポート番号順である。
 
-## 検証に使ったスクリプト
+## Godot実装上の注意
 
-`scripts/vdev_poke.py`（本リポジトリに同梱）。RX ファイルへのセンサー値書き込みと、TX ファイルからのモーター値読み出しを行う最小限の実験スクリプト。使用例は README を参照。
+### 共有ファイルの反映
+
+Godotは`unity_mmap.bin`へ書き込んだ後、`FileAccess.flush()`を呼び出す。
+これにより変更をAthrillの共有マッピングへ確実に反映する。
+
+同じファイルを別のGodot実行シーンが同時に書き込むと、入力値が競合する。
+孤児プロセスも含め、VDEVファイルの書き手は1プロセスだけにする。
+
+```bash
+pgrep -a -f Godot_v4.7.1
+```
+
+### 更新周期
+
+EV3RTの周期ハンドラは50 ms周期である。Godot側のVDEV交換周期を同じ50 msに
+固定すると、両者の位相によって短時間のセンサー変化を取りこぼす可能性がある。
+
+現在のGodot実装では10 msを交換周期として指定している。実際には固定物理
+フレームごとに最新値を交換する。
+
+### 固定物理周期
+
+走行体の位置・姿勢は`_process()`ではなく`_physics_process()`で更新する。
+可変描画周期で更新すると、ファイルI/Oなどによって`delta`が大きくなった際に
+カラーセンサーが1ステップでラインを横断し、進行方向が反転することがあった。
+
+固定物理周期への変更後、角丸矩形コースの継続周回と完全運搬シーケンスを
+確認している。
+
+## EV3 LCDコンソール出力との関係
+
+EV3 LCD文字列はVDEV MMAPを通していない。
+
+Athrill向け`ev3_lcd_draw_string()`の実装が文字列を標準出力へ転送する。
+同じLCD行に同じ文字列が繰り返された場合は、EV3APIエミュレーション層で
+重複出力を抑止する。
+
+したがって、次の経路は独立している。
+
+- センサー・モーター: VDEV MMAP
+- LCD状態名: Athrillプロセスの標準出力
+
+## VDEVレジスターマップの制約
+
+実機EV3では、4つのセンサーポートと4つのモーターポートへ接続する機器を
+アプリケーションが設定できる。
+
+一方、現在のVDEVレジスターマップはREFLECT、ULTRASONIC、TOUCH_0、
+TOUCH_1のように、センサー種別ごとに固定数のスロットを持つ。
+
+このため、たとえば超音波センサーを3個、カラーセンサーを2個使う構成は、
+現状のレジスターマップのままでは扱えない。
+
+`sample04-01-stm`の構成（touch×2、color×1、ultrasonic×1）は現在の範囲に
+収まっている。
+
+対応できない構成が必要になった場合、次を一続きで変更する必要がある。
+
+- `athrill-target-v850e2m`のVDEVレジスター定義
+- `ev3_vdev_common.h`、`vdev.h`などのターゲット依存ヘッダー
+- `uart_dri.c`などEV3RT側ドライバーの参照処理
+
+CPU命令セットシミュレーションを行うAthrillコア自体の変更は不要と見込まれる。
+
+## 検証用スクリプト
+
+`scripts/vdev_poke.py`はRXファイルへのセンサー値書き込みと、TXファイルからの
+モーター値読み出しを行う最小の診断ツールである。
+
+例:
+
+```bash
+python3 scripts/vdev_poke.py \
+  read_tx \
+  ../ev3rt-athrill-v850e2m/sdk/uml_seminar_ev3/sample04-01-stm/athrill_mmap.bin
+```
+
+出力例:
+
+```text
+TX header: magic=b'ETTX' version=1 micon_simtime=137680320 unity_simtime=0
+POWER_A(left)=0 POWER_C(right)=0
+```
+
+## 関連文書
+
+- [`README.md`](../README.md)
+- [`physical_model.md`](physical_model.md)

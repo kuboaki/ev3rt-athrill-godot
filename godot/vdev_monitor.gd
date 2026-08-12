@@ -1,5 +1,9 @@
 extends Label
 
+const ROBOT_TEXTURE: Texture2D = preload(
+	"res://assets/robot_top.png"
+)
+
 var tx_path := ""
 var rx_path := ""
 
@@ -117,9 +121,6 @@ func _ready() -> void:
 
 	tx_path = vdev_dir.path_join("athrill_mmap.bin")
 	rx_path = vdev_dir.path_join("unity_mmap.bin")
-	var robot_texture: Texture2D = preload(
-	    "res://assets/robot_top.png"
-	)
 	build_course_points()
 	reset_robot()
 	update_line_sensor()
@@ -449,45 +450,32 @@ func _draw() -> void:
 	)
 
 	# 差動二輪ロボット
+	# 上面画像は12時方向が前方。走行モデルの+x方向へ合わせて90度回転する。
+	draw_set_transform(
+		robot_position,
+		robot_angle + PI * 0.5
+	)
+	draw_texture_rect(
+		ROBOT_TEXTURE,
+		Rect2(
+			-BODY_WIDTH * 0.5,
+			-BODY_LENGTH * 0.5,
+			BODY_WIDTH,
+			BODY_LENGTH
+		),
+		false
+	)
+
+	# 荷物と進行方向の補助表示は走行体座標で描画する。
 	draw_set_transform(robot_position, robot_angle)
 
-	draw_rect(
-		Rect2(
-			-BODY_LENGTH * 0.5,
-			-BODY_WIDTH * 0.5,
-			BODY_LENGTH,
-			BODY_WIDTH
-		),
-		Color(0.2, 0.55, 0.9),
-		true
-	)
-
-	draw_rect(
-		Rect2(
-			-WHEEL_DIAMETER * 0.5,
-			-WHEEL_DISTANCE * 0.5 - WHEEL_WIDTH * 0.5,
-			WHEEL_DIAMETER,
-			WHEEL_WIDTH
-		),
-		Color(0.08, 0.08, 0.08),
-		true
-	)
-	draw_rect(
-		Rect2(
-			-WHEEL_DIAMETER * 0.5,
-			WHEEL_DISTANCE * 0.5 - WHEEL_WIDTH * 0.5,
-			WHEEL_DIAMETER,
-			WHEEL_WIDTH
-		),
-		Color(0.08, 0.08, 0.08),
-		true
-	)
 	if cargo_loaded:
 		draw_rect(
 			Rect2(-10, -10, 20, 20),
 			Color(0.95, 0.65, 0.15),
 			true
 		)
+
 	draw_line(
 		Vector2.ZERO,
 		Vector2(BODY_LENGTH * 0.5 + 10.0, 0),

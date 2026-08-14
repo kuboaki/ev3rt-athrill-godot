@@ -101,7 +101,6 @@ func _ready() -> void:
 		
 	setup_ultrasonic_ray_visual()
 	update_cargo_visibility()
-	print("VDEV READY cargo=", cargo)
 
 func _physics_process(_delta: float) -> void:
 	update_color_sensor()
@@ -449,18 +448,3 @@ func update_bumper_sensor() -> void:
 func update_cargo_visibility() -> void:
 	if cargo != null:
 		cargo.visible = cargo_loaded
-		
-func _input(event: InputEvent) -> void:
-	if (
-		event is InputEventKey
-		and event.pressed
-		and not event.echo
-	):
-		print(
-			"KEY TEST keycode=",
-			event.keycode,
-			" physical=",
-			event.physical_keycode,
-			" unicode=",
-			event.unicode
-		)

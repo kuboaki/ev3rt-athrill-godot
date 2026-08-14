@@ -22,6 +22,22 @@ Ubuntu 24.04 ARM64上で以下を確認済み。
 - 前方バンパーによる車庫正面壁の検出
 - EV3 LCD文字列のAthrillコンソール出力
 - 上面写真を使った走行体表示
+- Blenderモデルを変換した実寸3D走行体
+- A1コース、配達先壁、車庫壁の3D表示
+- カラー、超音波、前方バンパー、荷台タッチの3Dセンサー連携
+- Cuboid荷物の積載・荷下ろし表示
+- 台形状に近似したバンパー前面による斜め接触判定
+
+2D版に加え、Godot 3D版でもAthrillとの完全な荷物運搬シーケンスを確認済み。
+3D統合v2の確定基準点は次のタグである。
+
+```text
+godot-3d-integration-v2
+```
+
+詳細は
+[`docs/godot_3d_integration_v2_handoff.md`](docs/godot_3d_integration_v2_handoff.md)
+を参照。
 
 荷物運搬シーケンスでは次の状態遷移を確認済み。
 
@@ -86,8 +102,10 @@ ev3rt_godot/
   - 演習用タイマー、LCD表示、ホーンのユーティリティ
 - `godot/`
   - Godot側の走行体、コース、センサー、VDEVアダプター
+- `studio_model/`
+  - Blender、BrickLink Studio、LDrawの走行体・Cargoモデル
 - `docs/`
-  - VDEV仕様、物理モデル、コース資料
+  - VDEV仕様、物理モデル、コース資料、3D統合、ホスト移植方針
 - `scripts/`
   - パッチ準備、ビルド、起動、VDEV確認スクリプト
 
@@ -207,6 +225,24 @@ echo "athrill_pgrep_exit=$?"
 
 別の場所を使用する場合は、Godot起動前に`EV3RT_VDEV_DIR`を設定する。
 
+Godotプロジェクトには2D版と3D版の両方を保持している。
+
+| シーン | 用途 | 実行方法 |
+|---|---|---|
+| `godot/Main.tscn` | 動作基準となる2D版 | メインシーンとして`F5` |
+| `godot/Main3D.tscn` | Blenderモデルを使う3D版 | シーンを開いて`F6` |
+
+3D版の主要ファイル:
+
+- `godot/assets/auto_transporter_godot.glb`
+- `godot/assets/cuboid_godot.glb`
+- `godot/scripts/transporter_3d.gd`
+- `godot/scripts/course_line_3d.gd`
+- `godot/scripts/vdev_adapter.gd`
+
+Godot 4の`<asset>.import`にはUIDなどのインポート情報が含まれるため、
+`.godot/`キャッシュとは異なりGit管理する。
+
 ## Godotの操作
 
 | 操作 | 動作 |
@@ -307,6 +343,13 @@ pgrep -a -f Godot_v4.7.1
 - [`docs/a1_course_layout.pptx`](docs/a1_course_layout.pptx)
 - [`docs/sample04_stm_behavior.png`](docs/sample04_stm_behavior.png)
 - [`docs/vdev_protocol.md`](docs/vdev_protocol.md)
+- [`docs/godot_3d_integration_v2_handoff.md`](docs/godot_3d_integration_v2_handoff.md)
+- [`docs/host_platform_portability.md`](docs/host_platform_portability.md)
+
+ホストプラットフォームの追加対応については、
+[`docs/host_platform_portability.md`](docs/host_platform_portability.md)に、
+Ubuntu x86_64、macOS、Windows/WSL2、Windowsネイティブの見通しと
+受け入れ条件を記載している。
 
 ## 制御コードの方針
 
@@ -317,12 +360,15 @@ GodotのGDScriptは、走行体、ワールド、センサー表現、VDEVアダ
 ## 既知の制約と今後の作業
 
 - power値と実機速度の対応を実機走行距離から再校正する
-- 超音波センサー検出面と前方バンパー先端の位置を再測定する
 - カラーセンサーの点判定を実際の検出領域へ拡張する
-- 加減速、慣性、タイヤの滑りを走行モデルへ追加する
+- 超音波センサーの中心レイ1本を必要に応じて検出角付き領域へ拡張する
+- バンパーリンクの約17mmの後退運動とプランジャー押下をアニメーション化する
+- Cargoの積載・荷下ろし動作をアニメーション化する
+- 車輪回転の表示を追加する
+- 必要性を評価したうえで、加減速、慣性、タイヤの滑りを追加する
 - Godot画面へ操作説明と状態・センサー表示を整理して配置する
 - 必要に応じてEV3RT状態をVDEV経由でGodotへ表示する
 - Athrillを含む完全リセット手順を将来ランチャーへ統合する
-- BlenderモデルをglTF/GLBへ変換し、3D表示モデルとして取り込む
 - Ubuntu x86_64環境で構築・実行を検証する
+- macOSおよびWindowsへのホスト移植範囲を調査する
 - 完全な荷物運搬シーケンスの自動回帰試験を追加する

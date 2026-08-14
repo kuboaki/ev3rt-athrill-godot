@@ -31,17 +31,38 @@ _surfaces = [{
 [sub_resource type="BoxMesh" id="BoxMesh_u6khj"]
 size = Vector3(0.08, 0.16, 0.005)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ctil2"]
+transparency = 1
+cull_mode = 1
+shading_mode = 0
+albedo_color = Color(0.18039216, 0.43529412, 0.47058824, 1)
+grow = true
+grow_amount = 0.003
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5lff1"]
+next_pass = SubResource("StandardMaterial3D_ctil2")
 transparency = 1
 cull_mode = 2
-albedo_color = Color(0.38039216, 0.91764706, 0.95686275, 1)
-roughness = 0.8
+shading_mode = 0
+albedo_color = Color(0.47058824, 0.73333335, 0.76862746, 0.34901962)
 
 [sub_resource type="BoxMesh" id="BoxMesh_10sj8"]
 size = Vector3(0.12, 0.17, 0.005)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_c30fp"]
+transparency = 1
+cull_mode = 1
+shading_mode = 0
+albedo_color = Color(0.4745098, 0.3372549, 0.18431373, 1)
+grow = true
+grow_amount = 0.003
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8ukw0"]
-albedo_color = Color(0.9307748, 0.17577091, 0.51016706, 1)
+next_pass = SubResource("StandardMaterial3D_c30fp")
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.84705883, 0.6431373, 0.35686275, 0.34901962)
 
 [node name="Main3D" type="Node3D" unique_id=993724874]
 

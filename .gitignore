@@ -16,7 +16,6 @@ work/
 
 # Godot cache
 .godot/
-*.import
 
 # Editor and OS files
 *~

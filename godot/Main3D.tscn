@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://cpg8pmrl0j4g4"]
 
-[ext_resource type="PackedScene" uid="uid://d1pqusdn5vk5t" path="res://assets/auto_transporter_godot.glb" id="1_pwfse"]
+[ext_resource type="PackedScene" uid="uid://td0l6rfoysxm" path="res://assets/auto_transporter_godot.glb" id="1_pwfse"]
 [ext_resource type="Script" uid="uid://b212fxysuc7b1" path="res://scripts/transporter_3d.gd" id="2_8iyjh"]
 [ext_resource type="Script" uid="uid://ddlj3nceexfqd" path="res://scripts/course_line_3d.gd" id="2_kvye0"]
 [ext_resource type="Script" uid="uid://dlkf3j8rkrk7k" path="res://scripts/vdev_adapter.gd" id="4_qgfr0"]
@@ -10,18 +10,18 @@
 [sub_resource type="PlaneMesh" id="PlaneMesh_u6khj"]
 size = Vector2(0.841, 0.594)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8iyjh"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qgfr0"]
 cull_mode = 2
 shading_mode = 0
 albedo_color = Color(0.03, 0.03, 0.03, 1)
 
-[sub_resource type="ArrayMesh" id="ArrayMesh_qgfr0"]
+[sub_resource type="ArrayMesh" id="ArrayMesh_ctil2"]
 _surfaces = [{
 "aabb": AABB(-0.30799997, 0.002, -0.205, 0.61599994, 1e-05, 0.41),
 "format": 34359742465,
 "index_count": 600,
 "index_data": PackedByteArray("AAACAAEAAQACAAMAAgAEAAMAAwAEAAUABAAGAAUABQAGAAcABgAIAAcABwAIAAkACAAKAAkACQAKAAsACgAMAAsACwAMAA0ADAAOAA0ADQAOAA8ADgAQAA8ADwAQABEAEAASABEAEQASABMAEgAUABMAEwAUABUAFAAWABUAFQAWABcAFgAYABcAFwAYABkAGAAaABkAGQAaABsAGgAcABsAGwAcAB0AHAAeAB0AHQAeAB8AHgAgAB8AHwAgACEAIAAiACEAIQAiACMAIgAkACMAIwAkACUAJAAmACUAJQAmACcAJgAoACcAJwAoACkAKAAqACkAKQAqACsAKgAsACsAKwAsAC0ALAAuAC0ALQAuAC8ALgAwAC8ALwAwADEAMAAyADEAMQAyADMAMgA0ADMAMwA0ADUANAA2ADUANQA2ADcANgA4ADcANwA4ADkAOAA6ADkAOQA6ADsAOgA8ADsAOwA8AD0APAA+AD0APQA+AD8APgBAAD8APwBAAEEAQABCAEEAQQBCAEMAQgBEAEMAQwBEAEUARABGAEUARQBGAEcARgBIAEcARwBIAEkASABKAEkASQBKAEsASgBMAEsASwBMAE0ATABOAE0ATQBOAE8ATgBQAE8ATwBQAFEAUABSAFEAUQBSAFMAUgBUAFMAUwBUAFUAVABWAFUAVQBWAFcAVgBYAFcAVwBYAFkAWABaAFkAWQBaAFsAWgBcAFsAWwBcAF0AXABeAF0AXQBeAF8AXgBgAF8AXwBgAGEAYABiAGEAYQBiAGMAYgBkAGMAYwBkAGUAZABmAGUAZQBmAGcAZgBoAGcAZwBoAGkAaABqAGkAaQBqAGsAagBsAGsAawBsAG0AbABuAG0AbQBuAG8AbgBwAG8AbwBwAHEAcAByAHEAcQByAHMAcgB0AHMAcwB0AHUAdAB2AHUAdQB2AHcAdgB4AHcAdwB4AHkAeAB6AHkAeQB6AHsAegB8AHsAewB8AH0AfAB+AH0AfQB+AH8AfgCAAH8AfwCAAIEAgACCAIEAgQCCAIMAggCEAIMAgwCEAIUAhACGAIUAhQCGAIcAhgCIAIcAhwCIAIkAiACKAIkAiQCKAIsAigCMAIsAiwCMAI0AjACOAI0AjQCOAI8AjgCQAI8AjwCQAJEAkACSAJEAkQCSAJMAkgCUAJMAkwCUAJUAlACWAJUAlQCWAJcAlgCYAJcAlwCYAJkAmACaAJkAmQCaAJsAmgCcAJsAmwCcAJ0AnACeAJ0AnQCeAJ8AngCgAJ8AnwCgAKEAoACiAKEAoQCiAKMAogCkAKMAowCkAKUApACmAKUApQCmAKcApgCoAKcApwCoAKkAqACqAKkAqQCqAKsAqgCsAKsAqwCsAK0ArACuAK0ArQCuAK8ArgCwAK8ArwCwALEAsACyALEAsQCyALMAsgC0ALMAswC0ALUAtAC2ALUAtQC2ALcAtgC4ALcAtwC4ALkAuAC6ALkAuQC6ALsAugC8ALsAuwC8AL0AvAC+AL0AvQC+AL8AvgDAAL8AvwDAAMEAwADCAMEAwQDCAMMAwgDEAMMAwwDEAMUAxADGAMUAxQDGAMcAxgAAAMcAxwAAAAEA"),
-"material": SubResource("StandardMaterial3D_8iyjh"),
+"material": SubResource("StandardMaterial3D_qgfr0"),
 "primitive": 3,
 "uv_scale": Vector4(0, 0, 0, 0),
 "vertex_count": 200,
@@ -61,7 +61,7 @@ material_override = SubResource("StandardMaterial3D_10sj8")
 mesh = SubResource("PlaneMesh_u6khj")
 
 [node name="CourseLine" type="MeshInstance3D" parent="." unique_id=271074409]
-mesh = SubResource("ArrayMesh_qgfr0")
+mesh = SubResource("ArrayMesh_ctil2")
 script = ExtResource("2_kvye0")
 
 [node name="VdevAdapter" type="Node" parent="." unique_id=1718807040 node_paths=PackedStringArray("transporter", "delivery_wall", "ultrasonic_ray", "garage_wall")]

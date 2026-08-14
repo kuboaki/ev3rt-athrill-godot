@@ -52,6 +52,27 @@ const WALL_HALF_THICKNESS_M := 0.005 * 0.5
 var bumper_point: Node3D
 var bumper_pressed := false
 
+const BUMPER_LEFT_SHOULDER_OFFSET := Vector3(
+	-0.0811,
+	0.0,
+	0.02117
+)
+const BUMPER_LEFT_NOSE_OFFSET := Vector3(
+	-0.0650,
+	0.0,
+	0.0
+)
+const BUMPER_RIGHT_NOSE_OFFSET := Vector3(
+	0.0651,
+	0.0,
+	0.0
+)
+const BUMPER_RIGHT_SHOULDER_OFFSET := Vector3(
+	0.0816,
+	0.0,
+	0.02117
+)
+
 var ultrasonic_ray_mesh: CylinderMesh
 var ultrasonic_ray_material: StandardMaterial3D
 
@@ -81,7 +102,7 @@ func _ready() -> void:
 			false
 		) as Node3D
 		bumper_point = transporter.find_child(
-			"BumperCompatibilityPoint",
+			"BumperFrontExtreme",
 			true,
 			false
 		) as Node3D
@@ -410,31 +431,57 @@ func update_bumper_sensor() -> void:
 	):
 		return
 
-	var point_3d := bumper_point.global_position
-	var point := Vector2(
-		point_3d.x,
-		point_3d.z
-	)
+	var bumper_points := PackedVector2Array([
+		bumper_outline_point(
+			BUMPER_LEFT_SHOULDER_OFFSET
+		),
+		bumper_outline_point(
+			BUMPER_LEFT_NOSE_OFFSET
+		),
+		bumper_outline_point(
+			BUMPER_RIGHT_NOSE_OFFSET
+		),
+		bumper_outline_point(
+			BUMPER_RIGHT_SHOULDER_OFFSET
+		),
+	])
 
-	var wall_center := Vector2(
-		garage_wall.global_position.x,
-		garage_wall.global_position.z
-	)
+	var wall_center_3d := garage_wall.global_position
+	var wall_lateral_3d := (
+		garage_wall.global_transform.basis.x
+	).normalized()
 	var wall_half_width := GARAGE_WALL_WIDTH_M * 0.5
-	var wall_start := wall_center + Vector2(
-		-wall_half_width,
-		0.0
+
+	var wall_start_3d := (
+		wall_center_3d
+		- wall_lateral_3d * wall_half_width
 	)
-	var wall_end := wall_center + Vector2(
-		wall_half_width,
-		0.0
+	var wall_end_3d := (
+		wall_center_3d
+		+ wall_lateral_3d * wall_half_width
 	)
 
-	var closest := Geometry2D.get_closest_point_to_segment(
-		point,
-		wall_start,
-		wall_end
+	var wall_start := Vector2(
+		wall_start_3d.x,
+		wall_start_3d.z
 	)
+	var wall_end := Vector2(
+		wall_end_3d.x,
+		wall_end_3d.z
+	)
+
+	var minimum_distance: float = INF
+
+	for index in range(bumper_points.size() - 1):
+		minimum_distance = minf(
+			minimum_distance,
+			segment_distance(
+				bumper_points[index],
+				bumper_points[index + 1],
+				wall_start,
+				wall_end
+			)
+		)
 
 	var contact_distance := (
 		BUMPER_CONTACT_TOLERANCE_M
@@ -442,9 +489,71 @@ func update_bumper_sensor() -> void:
 	)
 
 	bumper_pressed = (
-		point.distance_to(closest) <= contact_distance
+		minimum_distance <= contact_distance
 	)
 	
+func bumper_outline_point(offset: Vector3) -> Vector2:
+	var point_3d := bumper_point.to_global(offset)
+	return Vector2(point_3d.x, point_3d.z)
+
+
+func segment_distance(
+	a_start: Vector2,
+	a_end: Vector2,
+	b_start: Vector2,
+	b_end: Vector2
+) -> float:
+	var intersection: Variant = (
+		Geometry2D.segment_intersects_segment(
+			a_start,
+			a_end,
+			b_start,
+			b_end
+		)
+	)
+	if intersection != null:
+		return 0.0
+
+	var closest_a_start: Vector2 = (
+		Geometry2D.get_closest_point_to_segment(
+			a_start,
+			b_start,
+			b_end
+		)
+	)
+	var closest_a_end: Vector2 = (
+		Geometry2D.get_closest_point_to_segment(
+			a_end,
+			b_start,
+			b_end
+		)
+	)
+	var closest_b_start: Vector2 = (
+		Geometry2D.get_closest_point_to_segment(
+			b_start,
+			a_start,
+			a_end
+		)
+	)
+	var closest_b_end: Vector2 = (
+		Geometry2D.get_closest_point_to_segment(
+			b_end,
+			a_start,
+			a_end
+		)
+	)
+
+	return minf(
+		minf(
+			a_start.distance_to(closest_a_start),
+			a_end.distance_to(closest_a_end)
+		),
+		minf(
+			b_start.distance_to(closest_b_start),
+			b_end.distance_to(closest_b_end)
+		)
+	)
+
 func update_cargo_visibility() -> void:
 	if cargo != null:
 		cargo.visible = cargo_loaded

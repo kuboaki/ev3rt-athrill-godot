@@ -14,6 +14,7 @@ var rx_path := ""
 var cargo_loaded := false
 
 @export var transporter: Node3D
+@export var cargo: Node3D
 
 var tx_path := ""
 var last_power_a := 999
@@ -99,6 +100,8 @@ func _ready() -> void:
 		push_error("GarageWall was not assigned")
 		
 	setup_ultrasonic_ray_visual()
+	update_cargo_visibility()
+	print("VDEV READY cargo=", cargo)
 
 func _physics_process(_delta: float) -> void:
 	update_color_sensor()
@@ -189,8 +192,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	):
 		return
 
-	if event.keycode == KEY_L:
+	if (
+		event.keycode == KEY_L
+		or event.physical_keycode == KEY_L
+	):
 		cargo_loaded = not cargo_loaded
+		update_cargo_visibility()
 		print("Cargo loaded: ", cargo_loaded)
 
 func build_course_points() -> void:
@@ -439,3 +446,21 @@ func update_bumper_sensor() -> void:
 		point.distance_to(closest) <= contact_distance
 	)
 	
+func update_cargo_visibility() -> void:
+	if cargo != null:
+		cargo.visible = cargo_loaded
+		
+func _input(event: InputEvent) -> void:
+	if (
+		event is InputEventKey
+		and event.pressed
+		and not event.echo
+	):
+		print(
+			"KEY TEST keycode=",
+			event.keycode,
+			" physical=",
+			event.physical_keycode,
+			" unicode=",
+			event.unicode
+		)

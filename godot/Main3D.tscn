@@ -53,7 +53,8 @@ script = ExtResource("2_8iyjh")
 transform = Transform3D(0.8660254, 0.40957603, -0.28678823, 0, 0.57357645, 0.81915206, 0.5, -0.7094065, 0.49673176, 0, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=984434126]
-transform = Transform3D(-0.7660444, 0.27165377, -0.58256334, 0, 0.9063077, 0.42261824, 0.6427876, 0.32374436, -0.694272, -0.55, 0.45, -0.65)
+transform = Transform3D(0.7880107, 0.3442735, -0.5104065, 0, 0.82903755, 0.55919284, 0.61566144, -0.44065, 0.6532905, -0.48, 0.48, 0.62)
+fov = 42.0
 
 [node name="CourseBase" type="MeshInstance3D" parent="." unique_id=850516988]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.001, 0)
